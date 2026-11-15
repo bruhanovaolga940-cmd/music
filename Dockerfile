@@ -18,13 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Устанавливаем Deno для обхода защиты потоков YouTube в yt-dlp
 RUN curl -fsSL https://deno.land | DENO_INSTALL=/usr/local sh
 
-# Устанавливаем зависимости Python из backend/requirements.txt
-COPY backend/requirements.txt ./
+# Устанавливаем зависимости Python из fastapi/requirements.txt
+COPY fastapi/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -U --pre "yt-dlp[default,curl-cffi]" yt-dlp-ejs
 
-# Копируем содержимое папки backend (внутри появится папка app)
-COPY backend/ ./
+# Копируем содержимое папки fastapi (внутри появится папка app)
+COPY fastapi/ ./
 
 # Копируем собранный фронтенд в /app/frontend/dist
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist

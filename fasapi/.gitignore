@@ -1,0 +1,6 @@
+fastapi/venv/
+fastapi/downloads/*
+!fastapi/downloads/.gitkeep
+frontend/node_modules/
+frontend/dist/
+.env

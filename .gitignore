@@ -7,9 +7,9 @@ __pycache__/
 
 # Секреты и временные файлы
 .env
-backend/app/.env
-backend/downloads/*
-!backend/downloads/.gitkeep
+fastapi/app/.env
+fastapi/downloads/*
+!fastapi/downloads/.gitkeep
 
 # Сборка фронтенда
 frontend/dist/
