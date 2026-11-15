@@ -1,0 +1,15 @@
+# Окружение и зависимости
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.pyc
+
+# Секреты и временные файлы
+.env
+backend/app/.env
+backend/downloads/*
+!backend/downloads/.gitkeep
+
+# Сборка фронтенда
+frontend/dist/
