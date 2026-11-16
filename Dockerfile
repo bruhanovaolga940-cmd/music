@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Устанавливаем Deno для обхода защиты потоков YouTube в yt-dlp
-RUN curl -fsSL https://deno.land | DENO_INSTALL=/usr/local sh
+RUN curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh
 
 # Устанавливаем зависимости Python из fastapi/requirements.txt
 COPY fastapi/requirements.txt ./
