@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     audio_quality: str = "192"          # kbps для mp3
     default_quality: str = "best"
 
+    # --- JS-рантайм (Deno/Node) ---
+    js_runtime_path: str | None = None
+
+    # --- видео ---
+    video_container: str = "mp4"
+    default_video_height: int = 1080
+    max_video_height: int = 2160
+    max_filesize_mb: int = 500
+
     # --- ограничения ---
     max_duration_seconds: int = 1800    # 30 минут на трек
     max_file_age_hours: int = 24        # через сколько чистить папку

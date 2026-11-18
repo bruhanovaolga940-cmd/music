@@ -1,51 +1,74 @@
-import asyncio
-import uuid
+from pathlib import Path
+
 import yt_dlp
+
 from app.config import settings
 
-QUALITY_MAP = {
-    "best": "320",
-    "medium": "192",
-    "low": "128",
-}
+AUDIO_BITRATE = {"best": "0", "medium": "192", "low": "128"}
+VIDEO_HEIGHT = {"best": None, "2160": 2160, "1080": 1080, "720": 720, "480": 480}
 
 
-def _sync_download(url: str, quality: str) -> str:
-    bitrate = QUALITY_MAP.get(quality, settings.audio_quality)
-    # Добавляем короткий уникальный суффикс, чтобы одинаковые треки не конфликтовали
-    uid = uuid.uuid4().hex[:6]
+def _video_format(height: int | None) -> str:
+    if height:
+        return (
+            f"bv*[height<={height}][ext=mp4]+ba[ext=m4a]/"
+            f"bv*[height<={height}]+ba/"
+            f"b[height<={height}]/b"
+        )
+    return "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b"
 
-    opts = {
-        "format": "bestaudio/best",
-        "postprocessors": [{
-            "key": "FFmpegExtractAudio",
-            "preferredcodec": settings.audio_format,
-            "preferredquality": bitrate,
-        }],
-        "outtmpl": str(settings.download_dir / f"%(title).80s_{uid}.%(ext)s"),
-        "socket_timeout": 15,         # Не ждем зависшее соединение вечно
-        "retries": 3,                 # Максимум 3 повтора при сбое сети
-        "quiet": False,               # Временно включаем логи в консоль для диагностики
-        "no_warnings": False,
+
+def _build_opts(kind: str, quality: str) -> dict:
+    def _progress(d):
+        if d["status"] == "downloading":
+            print(f"{d.get('_percent_str', '').strip()} {d.get('_speed_str', '').strip()} ETA {d.get('_eta_str', '').strip()}", flush=True)
+        elif d["status"] == "finished":
+            print("Скачано, идёт склейка...", flush=True)
+
+    opts: dict = {
+        "outtmpl": str(settings.download_dir / "%(title).150B [%(id)s].%(ext)s"),
+        "quiet": True,
+        "no_warnings": True,
         "noprogress": True,
-        "match_filter": yt_dlp.utils.match_filter_func(
-            f"duration < {settings.max_duration_seconds}"
-        ),
+        "color": "no_color",
+        "max_filesize": settings.max_filesize_mb * 1024 * 1024,
+        "restrictfilenames": False,
+        "windowsfilenames": True,
+        "noplaylist": True,
+        "progress_hooks": [_progress],
+        "noprogress": True,
+
     }
 
     if settings.ffmpeg_location:
         opts["ffmpeg_location"] = settings.ffmpeg_location
+    if settings.js_runtime_path:
+        opts["js_runtimes"] = {"deno": {"path": settings.js_runtime_path}}
+
+    if kind == "audio":
+        opts["format"] = "bestaudio/best"
+        opts["postprocessors"] = [{
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": AUDIO_BITRATE.get(quality, "0"),
+        }]
+    else:
+        height = VIDEO_HEIGHT.get(quality, settings.default_video_height)
+        if height and height > settings.max_video_height:
+            height = settings.max_video_height
+        opts["format"] = _video_format(height)
+        opts["merge_output_format"] = settings.video_container
+
+    return opts
+
+
+def download_media(url: str, kind: str = "audio", quality: str = "best") -> Path:
+    opts = _build_opts(kind, quality)
 
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=True)
+        path = Path(info["requested_downloads"][0]["filepath"])
 
-    # Проверяем, не отфильтровалось ли видео по длительности
-    if not info or "requested_downloads" not in info:
-        raise ValueError("Видео не подходит под ограничения (например, длиннее 30 минут)")
-
-    return info["requested_downloads"][0]["filepath"]
-
-
-async def download_youtube_audio(url: str, quality: str = "best") -> str:
-    # Запускаем синхронный yt-dlp в отдельном потоке, чтобы не вешать FastAPI
-    return await asyncio.to_thread(_sync_download, url, quality)
+    if not path.is_file():
+        raise RuntimeError("Файл не создан")
+    return path

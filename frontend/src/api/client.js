@@ -1,21 +1,14 @@
 const API = "/api";
 
-/**
- * @param {string} url
- * @param {"best" | "medium" | "low"} quality
- */
-export async function requestDownload(url, quality) {
+export async function requestDownload(url, kind = "audio", quality = "best") {
   const res = await fetch(`${API}/download`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url, quality }),
+    body: JSON.stringify({ url, kind, quality }),
   });
 
   const data = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    throw new Error(data?.detail ?? `Ошибка ${res.status}`);
-  }
+  if (!res.ok) throw new Error(data?.detail ?? `Ошибка ${res.status}`);
   return data;
 }
 
