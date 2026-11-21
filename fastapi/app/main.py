@@ -16,7 +16,8 @@ async def lifespan(app: FastAPI):
     settings.download_dir          # создаст папку на старте
     if settings.cookies_b64:
         path = settings.base_dir / "cookies.txt"
-        path.write_bytes(base64.b64decode(settings.cookies_b64))
+        clean_b64 = "".join(settings.cookies_b64.split())
+        path.write_bytes(base64.b64decode(clean_b64))
         settings.cookies_file = "cookies.txt"
     yield
 
