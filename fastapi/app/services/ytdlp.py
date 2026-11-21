@@ -1,3 +1,5 @@
+import asyncio
+import tempfile
 from pathlib import Path
 
 import yt_dlp
@@ -18,10 +20,15 @@ def _video_format(height: int | None) -> str:
     return "bv*[ext=mp4]+ba[ext=m4a]/bv*+ba/b"
 
 
-def _build_opts(kind: str, quality: str) -> dict:
+def _build_opts(kind: str, quality: str, cookie_path: Path | None = None) -> dict:
     def _progress(d):
         if d["status"] == "downloading":
-            print(f"{d.get('_percent_str', '').strip()} {d.get('_speed_str', '').strip()} ETA {d.get('_eta_str', '').strip()}", flush=True)
+            print(
+                f"{d.get('_percent_str', '').strip()} "
+                f"{d.get('_speed_str', '').strip()} "
+                f"ETA {d.get('_eta_str', '').strip()}",
+                flush=True,
+            )
         elif d["status"] == "finished":
             print("Скачано, идёт склейка...", flush=True)
 
@@ -36,14 +43,14 @@ def _build_opts(kind: str, quality: str) -> dict:
         "windowsfilenames": True,
         "noplaylist": True,
         "progress_hooks": [_progress],
-        "noprogress": True,
-
     }
 
     if settings.ffmpeg_location:
         opts["ffmpeg_location"] = settings.ffmpeg_location
     if settings.js_runtime_path:
         opts["js_runtimes"] = {"deno": {"path": settings.js_runtime_path}}
+    if cookie_path:
+        opts["cookiefile"] = str(cookie_path)
 
     if kind == "audio":
         opts["format"] = "bestaudio/best"
@@ -62,13 +69,40 @@ def _build_opts(kind: str, quality: str) -> dict:
     return opts
 
 
-def download_media(url: str, kind: str = "audio", quality: str = "best") -> Path:
-    opts = _build_opts(kind, quality)
+def _create_temp_cookies() -> Path | None:
+    raw_cookies = getattr(settings, "youtube_cookies", None)
+    if not raw_cookies:
+        return None
 
-    with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        path = Path(info["requested_downloads"][0]["filepath"])
+    # Восстанавливаем переносы строк, если Railway передал их как текст \n
+    normalized = raw_cookies.replace("\\r\\n", "\n").replace("\\n", "\n").strip() + "\n"
 
-    if not path.is_file():
-        raise RuntimeError("Файл не создан")
-    return path
+    tmp = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".txt", delete=False, encoding="utf-8"
+    )
+    tmp.write(normalized)
+    tmp.close()
+    return Path(tmp.name)
+
+
+def download_media_sync(url: str, kind: str = "audio", quality: str = "best") -> Path:
+    cookie_path = _create_temp_cookies()
+    try:
+        opts = _build_opts(kind, quality, cookie_path=cookie_path)
+
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            if not info or "requested_downloads" not in info:
+                raise RuntimeError("Не удалось получить поток для скачивания")
+            path = Path(info["requested_downloads"][0]["filepath"])
+
+        if not path.is_file():
+            raise RuntimeError("Файл не создан")
+        return path
+    finally:
+        if cookie_path and cookie_path.exists():
+            cookie_path.unlink(missing_ok=True)
+
+
+async def download_media(url: str, kind: str = "audio", quality: str = "best") -> Path:
+    return await asyncio.to_thread(download_media_sync, url, kind, quality)

@@ -47,6 +47,8 @@ class Settings(BaseSettings):
     # --- ffmpeg (если не в PATH) ---
     ffmpeg_location: str | None = None
 
+    youtube_cookies: str | None = None
+
     @property
     def download_dir(self) -> Path:
         """Папка скачиваний, создаётся при первом обращении."""
