@@ -48,8 +48,6 @@ def _build_opts(kind: str, quality: str) -> dict:
         opts["cookiefile"] = str(settings.base_dir / settings.cookies_file)
     elif settings.cookies_from_browser:
         opts["cookiesfrombrowser"] = (settings.cookies_from_browser,)
-    elif settings.cookies_b64:
-        opts["cookiefile"] = str(settings.base_dir / "cookies.txt")
 
     if kind == "audio":
         opts["format"] = "bestaudio/best"
