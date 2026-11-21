@@ -47,7 +47,9 @@ class Settings(BaseSettings):
     # --- ffmpeg (если не в PATH) ---
     ffmpeg_location: str | None = None
 
-    youtube_cookies: str | None = None
+    cookies_file: str | None = None
+    cookies_from_browser: str | None = None
+    cookies_b64: str | None = None
 
     @property
     def download_dir(self) -> Path:

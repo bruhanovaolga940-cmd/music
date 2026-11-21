@@ -4,3 +4,5 @@ fastapi/downloads/*
 frontend/node_modules/
 frontend/dist/
 .env
+cookies.txt
+!backend/cookies.txt.example

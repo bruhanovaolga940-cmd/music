@@ -1,3 +1,4 @@
+import base64
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -13,6 +14,10 @@ from app.routers.download import router as download_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     settings.download_dir          # создаст папку на старте
+    if settings.cookies_b64:
+        path = settings.base_dir / "cookies.txt"
+        path.write_bytes(base64.b64decode(settings.cookies_b64))
+        settings.cookies_file = "cookies.txt"
     yield
 
 
